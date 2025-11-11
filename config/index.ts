@@ -5,12 +5,12 @@ export const API_URL = `${process.env.NEXT_PUBLIC_API_URL}`
 const disableSessionSameSiteEnv = process.env.NEXT_PUBLIC_DISABLE_SESSION_SAME_SITE
 
 export const APP_INFO: AppInfo = {
-  title: '〇〇クリニックAI',
+  title: '桜木町おひさま歯科・矯正歯科',
   description: '',
   copyright: '',
   privacy_policy: '',
   default_language: 'en',
-  avatar_url: 'https://mute-yellow-nqneatrsk1.edgeone.app/ChatGPT%20Image%202025年11月3日%2014_37_19.png',
+  avatar_url: 'https://unhappy-amaranth-x7zejps3ri.edgeone.app/スクリーンショット%202025-11-11%2014.37.12.png',
   show_welcome_page: false,
   show_conversation_history: false,
   // iframe など別オリジンからアクセスする場合は SameSite=None; Secure を付けたクッキーが必要

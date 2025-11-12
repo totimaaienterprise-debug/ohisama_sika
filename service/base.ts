@@ -1,4 +1,4 @@
-import { API_PREFIX } from '@/config'
+import { APP_ID, API_PREFIX, SESSION_HEADER_KEY } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/chat/type'
 import type { VisionFile } from '@/types/app'
@@ -12,6 +12,8 @@ const ContentType = {
   download: 'application/octet-stream', // for download
 }
 
+const SESSION_STORAGE_KEY_PREFIX = 'dify_session_id'
+
 const baseOptions = {
   method: 'GET',
   mode: 'cors',
@@ -20,6 +22,42 @@ const baseOptions = {
     'Content-Type': ContentType.json,
   }),
   redirect: 'follow',
+}
+
+const getSessionStorage = () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) { return window.localStorage }
+  }
+  catch (_error) {
+    return undefined
+  }
+  return undefined
+}
+
+const ensureSessionId = () => {
+  const storage = getSessionStorage()
+  if (!storage) { return undefined }
+  const storageKey = `${SESSION_STORAGE_KEY_PREFIX}_${APP_ID || 'default'}`
+  let sessionId = storage.getItem(storageKey)
+  if (!sessionId) {
+    const generator = globalThis.crypto?.randomUUID?.bind(globalThis.crypto)
+    sessionId = generator ? generator() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    storage.setItem(storageKey, sessionId)
+  }
+  return sessionId
+}
+
+const createHeaders = (overrideHeaders?: HeadersInit) => {
+  const headers = new Headers(baseOptions.headers as HeadersInit)
+  if (overrideHeaders) {
+    const extraHeaders = overrideHeaders instanceof Headers ? overrideHeaders : new Headers(overrideHeaders)
+    extraHeaders.forEach((value, key) => {
+      headers.set(key, value)
+    })
+  }
+  const sessionId = ensureSessionId()
+  if (sessionId) { headers.set(SESSION_HEADER_KEY, sessionId) }
+  return headers
 }
 
 export interface WorkflowStartedResponse {
@@ -247,8 +285,10 @@ const handleStream = (
 }
 
 const baseFetch = (url: string, fetchOptions: any, { needAllResponseContent }: IOtherOptions) => {
-  const options = Object.assign({}, baseOptions, fetchOptions)
-
+  const options = Object.assign({}, baseOptions, fetchOptions, {
+    headers: createHeaders(fetchOptions?.headers),
+  })
+  
   const urlPrefix = API_PREFIX
 
   let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
@@ -339,8 +379,19 @@ export const upload = (fetchOptions: any): Promise<any> => {
   return new Promise((resolve, reject) => {
     const xhr = options.xhr
     xhr.open(options.method, options.url)
-    for (const key in options.headers) { xhr.setRequestHeader(key, options.headers[key]) }
-
+    const sessionId = ensureSessionId()
+    const headers: Record<string, string> = {}
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value: string, key: string) => {
+        headers[key] = value
+      })
+    }
+    else if (options.headers) {
+      Object.assign(headers, options.headers)
+    }
+    if (sessionId) { headers[SESSION_HEADER_KEY] = sessionId }
+    for (const key in headers) { xhr.setRequestHeader(key, headers[key]) }
+    
     xhr.withCredentials = true
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
@@ -372,7 +423,9 @@ export const ssePost = (
 ) => {
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
-  }, fetchOptions)
+  }, fetchOptions, {
+    headers: createHeaders(fetchOptions?.headers),
+  })
 
   const urlPrefix = API_PREFIX
   const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`

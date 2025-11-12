@@ -1,12 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { ChatClient } from 'dify-client'
 import { v4 } from 'uuid'
-import { API_KEY, API_URL, APP_ID, APP_INFO } from '@/config'
-
+import { API_KEY, API_URL, APP_ID, APP_INFO, SESSION_HEADER_KEY } from '@/config'
 const userPrefix = `user_${APP_ID}:`
 
 export const getInfo = (request: NextRequest) => {
-  const sessionId = request.cookies.get('session_id')?.value || v4()
+  const headerSessionId = request.headers.get(SESSION_HEADER_KEY) || ''
+  const cookieSessionId = request.cookies.get('session_id')?.value || ''
+  const sessionId = (headerSessionId || cookieSessionId || '').trim() || v4()
   const user = userPrefix + sessionId
   return {
     sessionId,

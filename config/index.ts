@@ -24,6 +24,7 @@ export const isShowPrompt = false
 export const promptTemplate = 'I want you to act as a javascript console.'
 
 export const API_PREFIX = '/api'
+export const SESSION_HEADER_KEY = 'x-session-id'
 
 export const LOCALE_COOKIE_NAME = 'locale'
 
